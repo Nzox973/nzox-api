@@ -1,12 +1,14 @@
 # Authentification JWT et hachage des mots de passe
+import os
 from datetime import datetime, timedelta
 from typing import Optional
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from .schemas import TokenData
 
-# En production : charger depuis os.environ ou python-dotenv
-SECRET_KEY = "nzox-change-this-secret-in-production"
+# En production : définir SECRET_KEY dans les variables d'environnement
+# Ne jamais utiliser le fallback "dev-only-change-me" en production
+SECRET_KEY = os.getenv("SECRET_KEY", "dev-only-change-me")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
@@ -20,7 +22,7 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 
 
 def get_password_hash(password: str) -> str:
-    """Génère le hash bcrypt d'un mot de passe en clair."""
+    """Gènère le hash bcrypt d'un mot de passe en clair."""
     return pwd_context.hash(password)
 
 
