@@ -39,6 +39,7 @@ nzox-api/
 │       ├── auth.py      # /auth/*
 │       ├── users.py     # /users/*
 │       └── items.py     # /items/*
+├── .env.example
 ├── requirements.txt
 └── README.md
 ```
@@ -59,11 +60,15 @@ source .venv/bin/activate  # Windows: .venv\Scripts\activate
 # 3. Installer les dépendances
 pip install -r requirements.txt
 
-# 4. Lancer le serveur
+# 4. Configurer les variables d'environnement
+cp .env.example .env
+# Éditer .env et définir SECRET_KEY (voir .env.example)
+
+# 5. Lancer le serveur
 uvicorn app.main:app --reload
 ```
 
-L'API est disponible sur **http://localhost:8000**
+L'API est disponible sur **http://localhost:8000**  
 Swagger UI : **http://localhost:8000/docs**
 
 ---
@@ -113,6 +118,28 @@ curl -H "Authorization: Bearer <token>" http://localhost:8000/auth/me
 | `DELETE` | `/items/{id}` | Supprimer un item 🔒 |
 
 > 🔒 = Authentification requise
+
+---
+
+## 📊 Ce que ce projet démontre
+
+- Conception d'une API REST complète avec FastAPI (routing, middleware, dependency injection)
+- Authentification JWT stateless : génération, validation, expiration
+- Hachage de mots de passe bcrypt avec passlib
+- ORM SQLAlchemy avec modèles, relations et sessions
+- Validation des données entrée/sortie avec Pydantic v2
+- Architecture en couches : routers / crud / schemas / models / auth
+- Gestion des secrets via variables d'environnement
+
+---
+
+## 🛡️ Sécurité
+
+- **Aucun secret** dans le code source — `SECRET_KEY` via variable d'environnement uniquement
+- Générer une clé sécurisée : `openssl rand -hex 32`
+- Mots de passe hachés avec bcrypt (jamais stockés en clair)
+- Tokens JWT signés HS256 avec expiration 30 minutes
+- Fichier `.env` exclu du dépôt via `.gitignore`
 
 ---
 
