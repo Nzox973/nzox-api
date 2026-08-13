@@ -1,7 +1,8 @@
 # Modèles SQLAlchemy — représentent les tables de la base de données
-from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, DateTime
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
+
 from .database import Base
 
 
@@ -17,7 +18,7 @@ class User(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     # Un utilisateur possède plusieurs items (suppression en cascade)
-    items = relationship("Item", back_populates="owner", cascade="all, delete")
+    items = relationship("Item", back_populates="owner", cascade="all, delete-orphan")
 
 
 class Item(Base):
@@ -29,6 +30,6 @@ class Item(Base):
     description = Column(String, nullable=True)
     is_public = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
-    owner_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    owner_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
 
     owner = relationship("User", back_populates="items")

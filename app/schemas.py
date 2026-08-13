@@ -1,8 +1,6 @@
-# Schémas Pydantic — validation des entrées et sérialisation des réponses
-from pydantic import BaseModel, EmailStr
 from datetime import datetime
-from typing import Optional, List
 
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 # ─────────────────────────────── TOKEN ───────────────────────────────
 
@@ -14,53 +12,60 @@ class Token(BaseModel):
 
 class TokenData(BaseModel):
     """Données extraites du payload JWT."""
-    username: Optional[str] = None
+    username: str | None = None
 
 
 # ─────────────────────────────── USER ────────────────────────────────
 
-class UserBase(BaseModel):
-    email: EmailStr
-    username: str
-
-
-class UserCreate(UserBase):
+class UserCreate(BaseModel):
     """Corps de la requête d'inscription."""
-    password: str
+
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    email: EmailStr
+    username: str = Field(min_length=3, max_length=32, pattern=r"^[A-Za-z0-9_-]+$")
+    password: str = Field(min_length=12, max_length=128)
 
 
-class UserResponse(UserBase):
-    """Réponse publique — ne contient jamais le mot de passe."""
+class UserPublic(BaseModel):
+    """Profil publiable : aucune adresse email."""
+
     id: int
+    username: str
     is_active: bool
     created_at: datetime
 
-    model_config = {"from_attributes": True}
+    model_config = ConfigDict(from_attributes=True)
 
 
-class UserWithItems(UserResponse):
-    """Profil utilisateur avec la liste de ses items."""
-    items: List["ItemResponse"] = []
+class UserPrivate(UserPublic):
+    """Profil retourné uniquement à son propriétaire."""
+
+    email: EmailStr
 
 
 # ─────────────────────────────── ITEM ────────────────────────────────
 
 class ItemBase(BaseModel):
-    title: str
-    description: Optional[str] = None
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    title: str = Field(min_length=1, max_length=120)
+    description: str | None = Field(default=None, max_length=1_000)
     is_public: bool = True
 
 
 class ItemCreate(ItemBase):
     """Corps de la requête de création d'un item."""
-    pass
 
 
 class ItemUpdate(BaseModel):
     """Mise à jour partielle — tous les champs sont optionnels."""
-    title: Optional[str] = None
-    description: Optional[str] = None
-    is_public: Optional[bool] = None
+
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    title: str | None = Field(default=None, min_length=1, max_length=120)
+    description: str | None = Field(default=None, max_length=1_000)
+    is_public: bool | None = None
 
 
 class ItemResponse(ItemBase):
@@ -69,4 +74,10 @@ class ItemResponse(ItemBase):
     owner_id: int
     created_at: datetime
 
-    model_config = {"from_attributes": True}
+    model_config = ConfigDict(from_attributes=True)
+
+
+class UserWithPublicItems(UserPublic):
+    """Profil public avec seulement les items explicitement publics."""
+
+    items: list[ItemResponse] = Field(default_factory=list)

@@ -2,19 +2,26 @@ name: CI
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
-  check:
+  test:
     runs-on: ubuntu-latest
+    env:
+      SECRET_KEY: test-only-secret-key-with-more-than-32-characters
+      DATABASE_URL: sqlite://
+      CORS_ORIGINS: http://testserver
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: "3.11"
+          cache: pip
       - name: Install dependencies
-        run: pip install -r requirements.txt
-      - name: Syntax check
-        run: python -m py_compile app/main.py app/auth.py app/models.py app/schemas.py app/crud.py app/database.py app/dependencies.py
+        run: pip install -r requirements-dev.txt
+      - name: Lint
+        run: ruff check app tests
+      - name: Test
+        run: pytest -q

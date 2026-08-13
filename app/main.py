@@ -1,12 +1,21 @@
-# Point d'entrée de l'application — Nzox API
+"""Point d'entrée de Nzox API."""
+
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from .database import engine
-from . import models
-from .routers import auth, users, items
 
-# Création automatique des tables au démarrage
-models.Base.metadata.create_all(bind=engine)
+from . import models
+from .config import settings
+from .database import engine
+from .routers import auth, items, users
+
+
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    """Initialise le schéma au démarrage sans effet de bord à l'import."""
+    models.Base.metadata.create_all(bind=engine)
+    yield
 
 app = FastAPI(
     title="Nzox API",
@@ -22,15 +31,15 @@ app = FastAPI(
     version="1.0.0",
     contact={"name": "Nzox973", "url": "https://github.com/Nzox973"},
     license_info={"name": "MIT"},
+    lifespan=lifespan,
 )
 
-# CORS — autoriser toutes les origines (restreindre en production)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=list(settings.cors_origins),
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type"],
 )
 
 # Enregistrement des routeurs
