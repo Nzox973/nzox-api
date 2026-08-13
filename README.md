@@ -123,7 +123,7 @@ Une ressource privée répond `404` sur les routes publiques afin de ne pas conf
 ```bash
 pip install -r requirements-dev.txt
 ruff check app tests
-pytest -q
+python -m pytest -q
 ```
 
 La suite vérifie notamment :
