@@ -82,6 +82,25 @@ def test_public_item_can_be_read_without_authentication(client, auth_headers):
     assert response.json()["title"] == "Visible"
 
 
+def test_item_patch_rejects_null_for_required_fields(client, auth_headers):
+    _, headers = auth_headers("publisher")
+    created = client.post(
+        "/items/",
+        headers=headers,
+        json={"title": "Stable", "is_public": True},
+    )
+    item_id = created.json()["id"]
+
+    for payload in ({"title": None}, {"is_public": None}):
+        response = client.patch(f"/items/{item_id}", headers=headers, json=payload)
+        assert response.status_code == 422
+
+    unchanged = client.get(f"/items/{item_id}")
+    assert unchanged.status_code == 200
+    assert unchanged.json()["title"] == "Stable"
+    assert unchanged.json()["is_public"] is True
+
+
 def test_cors_allows_only_configured_origin(client):
     allowed = client.options(
         "/items/",

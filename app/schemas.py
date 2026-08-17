@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 # ─────────────────────────────── TOKEN ───────────────────────────────
 
@@ -66,6 +66,14 @@ class ItemUpdate(BaseModel):
     title: str | None = Field(default=None, min_length=1, max_length=120)
     description: str | None = Field(default=None, max_length=1_000)
     is_public: bool | None = None
+
+    @field_validator("title", "is_public")
+    @classmethod
+    def reject_null_for_required_fields(cls, value):
+        """Refuse de remplacer par null des colonnes qui exigent une valeur."""
+        if value is None:
+            raise ValueError("ce champ ne peut pas être null")
+        return value
 
 
 class ItemResponse(ItemBase):
