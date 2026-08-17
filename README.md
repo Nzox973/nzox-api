@@ -1,161 +1,159 @@
-# 🚀 Nzox API
+# Nzox API
 
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.111-009688?style=for-the-badge&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
-[![Python](https://img.shields.io/badge/Python-3.11+-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://python.org)
-[![SQLite](https://img.shields.io/badge/SQLite-003B57?style=for-the-badge&logo=sqlite&logoColor=white)](https://sqlite.org)
-[![JWT](https://img.shields.io/badge/JWT-Auth-000000?style=for-the-badge&logo=jsonwebtokens&logoColor=white)](https://jwt.io)
-[![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)](LICENSE)
+[![CI](https://github.com/Nzox973/nzox-api/actions/workflows/ci.yml/badge.svg)](https://github.com/Nzox973/nzox-api/actions/workflows/ci.yml)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.141-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
+[![Python](https://img.shields.io/badge/Python-3.11+-3776AB?logo=python&logoColor=white)](https://python.org)
+[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-API REST complète construite avec **FastAPI**, **SQLAlchemy** et **SQLite**. Authentification JWT, CRUD complet pour les utilisateurs et les items, documentation Swagger automatique.
+API REST de démonstration construite avec FastAPI, SQLAlchemy et SQLite. Le projet montre une authentification JWT, un contrôle de propriété des ressources et une séparation explicite entre données publiques et privées.
 
----
+## Ce que le projet démontre
 
-## ✨ Fonctionnalités
+- API documentée automatiquement avec OpenAPI, Swagger UI et ReDoc ;
+- inscription et connexion OAuth2 Password + JWT ;
+- mots de passe hachés avec Argon2 via `pwdlib` ;
+- validation des entrées avec Pydantic ;
+- routes privées protégées par dépendances FastAPI ;
+- accès public limité aux profils et items publiables ;
+- CORS restreint aux origines configurées ;
+- six tests d'API exécutés en CI, avec contrôle statique Ruff.
 
-| Feature | Détail |
-|---|---|
-| 🔐 Auth JWT | Inscription, connexion, token Bearer 30 min |
-| 👤 Users | CRUD utilisateurs avec hachage bcrypt |
-| 📦 Items | CRUD complet avec ownership |
-| 📖 Swagger | Docs interactives sur `/docs` |
-| 📄 ReDoc | Docs alternatives sur `/redoc` |
-| 🛡️ Sécurité | Validation Pydantic, routes protégées |
+Ce dépôt est un projet pédagogique. Une mise en production réelle demanderait notamment des migrations Alembic, une base PostgreSQL, une politique de rotation des secrets, une limitation de débit et une supervision.
 
----
+## Démarrage local
 
-## 📁 Structure du projet
-
-```
-nzox-api/
-├── app/
-│   ├── main.py          # Point d'entrée FastAPI
-│   ├── database.py      # Config SQLAlchemy + SQLite
-│   ├── models.py        # Modèles ORM
-│   ├── schemas.py       # Schémas Pydantic
-│   ├── crud.py          # Opérations CRUD
-│   ├── auth.py          # JWT + bcrypt
-│   ├── dependencies.py  # Dépendances FastAPI
-│   └── routers/
-│       ├── auth.py      # /auth/*
-│       ├── users.py     # /users/*
-│       └── items.py     # /items/*
-├── .env.example
-├── requirements.txt
-└── README.md
-```
-
----
-
-## ⚡ Démarrage rapide
+Prérequis : Python 3.11 ou supérieur.
 
 ```bash
-# 1. Cloner le repo
 git clone https://github.com/Nzox973/nzox-api.git
 cd nzox-api
-
-# 2. Créer un environnement virtuel
 python -m venv .venv
-source .venv/bin/activate  # Windows: .venv\Scripts\activate
+```
 
-# 3. Installer les dépendances
+Activation de l'environnement :
+
+```bash
+# Windows PowerShell
+.venv\Scripts\Activate.ps1
+
+# Linux / macOS
+source .venv/bin/activate
+```
+
+Installation et configuration :
+
+```bash
 pip install -r requirements.txt
-
-# 4. Configurer les variables d'environnement
 cp .env.example .env
-# Éditer .env et définir SECRET_KEY (voir .env.example)
+python -c "import secrets; print(secrets.token_hex(32))"
+```
 
-# 5. Lancer le serveur
+Copier la valeur générée dans `SECRET_KEY` du fichier `.env`, puis lancer :
+
+```bash
 uvicorn app.main:app --reload
 ```
 
-L'API est disponible sur **http://localhost:8000**  
-Swagger UI : **http://localhost:8000/docs**
+- API : `http://localhost:8000`
+- Swagger UI : `http://localhost:8000/docs`
+- ReDoc : `http://localhost:8000/redoc`
+- Healthcheck : `http://localhost:8000/health`
 
----
+Sous PowerShell, si `cp` n'est pas disponible :
 
-## 🔐 Authentification
+```powershell
+Copy-Item .env.example .env
+```
+
+## Variables d'environnement
+
+| Variable | Rôle | Valeur par défaut |
+|---|---|---|
+| `SECRET_KEY` | Signature des JWT ; 32 caractères aléatoires minimum | aucune, démarrage refusé |
+| `DATABASE_URL` | URL SQLAlchemy | `sqlite:///./nzox_api.db` |
+| `CORS_ORIGINS` | Origines autorisées, séparées par des virgules | ports locaux 3000 et 5173 |
+
+Le joker `*` n'est pas utilisé pour une API authentifiée. Les secrets faibles ou les exemples connus provoquent volontairement un échec au démarrage.
+
+## Parcours API
+
+### 1. Créer un compte
 
 ```bash
-# 1. Créer un compte
 curl -X POST http://localhost:8000/auth/register \
   -H "Content-Type: application/json" \
-  -d '{"email": "you@example.com", "username": "nzox", "password": "secret"}'
+  -d '{"email":"you@example.com","username":"nzox","password":"Strong-password-123!"}'
+```
 
-# 2. Se connecter (récupérer le token)
+### 2. Obtenir un token
+
+```bash
 curl -X POST http://localhost:8000/auth/login \
-  -d "username=nzox&password=secret"
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "username=nzox&password=Strong-password-123!"
+```
 
-# 3. Utiliser le token
+### 3. Appeler une route privée
+
+```bash
 curl -H "Authorization: Bearer <token>" http://localhost:8000/auth/me
 ```
 
----
+## Endpoints et confidentialité
 
-## 📡 Endpoints
+| Méthode | Route | Accès | Données retournées |
+|---|---|---|---|
+| `POST` | `/auth/register` | public | profil privé du compte créé |
+| `POST` | `/auth/login` | public | token JWT |
+| `GET` | `/auth/me` | propriétaire | profil avec email |
+| `GET` | `/users/` | authentifié | profils sans email |
+| `GET` | `/users/{id}` | public | profil sans email + items publics |
+| `DELETE` | `/users/{id}` | propriétaire | suppression de son compte |
+| `GET` | `/items/` | public | items publics |
+| `GET` | `/items/{id}` | public | item public uniquement |
+| `GET` | `/items/me` | propriétaire | tous ses items |
+| `POST` | `/items/` | authentifié | création |
+| `PATCH` | `/items/{id}` | propriétaire | modification |
+| `DELETE` | `/items/{id}` | propriétaire | suppression |
 
-### 🔐 Auth
-| Méthode | Route | Description |
-|---|---|---|
-| `POST` | `/auth/register` | Créer un compte |
-| `POST` | `/auth/login` | Connexion → token JWT |
-| `GET` | `/auth/me` | Profil connecté 🔒 |
+Une ressource privée répond `404` sur les routes publiques afin de ne pas confirmer son existence.
 
-### 👤 Users
-| Méthode | Route | Description |
-|---|---|---|
-| `GET` | `/users/` | Lister les users 🔒 |
-| `GET` | `/users/{id}` | Détail utilisateur |
-| `DELETE` | `/users/{id}` | Supprimer son compte 🔒 |
+## Tests et qualité
 
-### 📦 Items
-| Méthode | Route | Description |
-|---|---|---|
-| `GET` | `/items/` | Lister les items publics |
-| `GET` | `/items/me` | Mes items 🔒 |
-| `GET` | `/items/{id}` | Détail item |
-| `POST` | `/items/` | Créer un item 🔒 |
-| `PATCH` | `/items/{id}` | Modifier un item 🔒 |
-| `DELETE` | `/items/{id}` | Supprimer un item 🔒 |
+```bash
+pip install -r requirements-dev.txt
+ruff check app tests
+python -m pytest -q
+```
 
-> 🔒 = Authentification requise
+La suite vérifie notamment :
 
----
+- la validation minimale des mots de passe ;
+- l'absence d'email dans les réponses publiques ;
+- l'invisibilité des items privés ;
+- le contrôle de propriété sur modification et suppression ;
+- le filtrage CORS ;
+- la suppression limitée à son propre compte.
 
-## 📊 Ce que ce projet démontre
+## Structure
 
-- Conception d'une API REST complète avec FastAPI (routing, middleware, dependency injection)
-- Authentification JWT stateless : génération, validation, expiration
-- Hachage de mots de passe bcrypt avec passlib
-- ORM SQLAlchemy avec modèles, relations et sessions
-- Validation des données entrée/sortie avec Pydantic v2
-- Architecture en couches : routers / crud / schemas / models / auth
-- Gestion des secrets via variables d'environnement
+```text
+app/
+├── auth.py          # JWT et Argon2
+├── config.py        # variables d'environnement validées
+├── crud.py          # accès aux données
+├── database.py      # moteur et sessions SQLAlchemy
+├── dependencies.py  # DB et utilisateur courant
+├── main.py          # application et CORS
+├── models.py        # modèles ORM
+├── schemas.py       # schémas publics et privés
+└── routers/         # auth, users et items
+tests/
+└── test_api.py
+```
 
----
-
-## 🛡️ Sécurité
-
-- **Aucun secret** dans le code source — `SECRET_KEY` via variable d'environnement uniquement
-- Générer une clé sécurisée : `openssl rand -hex 32`
-- Mots de passe hachés avec bcrypt (jamais stockés en clair)
-- Tokens JWT signés HS256 avec expiration 30 minutes
-- Fichier `.env` exclu du dépôt via `.gitignore`
-
----
-
-## 🛠️ Stack technique
-
-- **[FastAPI](https://fastapi.tiangolo.com)** — framework web async moderne
-- **[SQLAlchemy](https://sqlalchemy.org)** — ORM Python
-- **[SQLite](https://sqlite.org)** — base de données légère
-- **[Pydantic v2](https://docs.pydantic.dev)** — validation des données
-- **[python-jose](https://github.com/mpdavis/python-jose)** — JWT
-- **[passlib + bcrypt](https://passlib.readthedocs.io)** — hachage des mots de passe
-
----
-
-## 👤 Auteur
+## Auteur
 
 **Nzox973** — [github.com/Nzox973](https://github.com/Nzox973)
 
-*🌴 Building from Guyane, shipping to the world.*
+*Building from Guyane, shipping to the world.*

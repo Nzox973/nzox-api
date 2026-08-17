@@ -1,37 +1,36 @@
-# Routes d'authentification : inscription, connexion, profil
+"""Routes d'inscription, de connexion et de profil privé."""
+
+from datetime import timedelta
+from typing import Annotated
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
-from sqlalchemy.orm import Session
-from datetime import timedelta
+
 from .. import crud, schemas
-from ..auth import verify_password, create_access_token, ACCESS_TOKEN_EXPIRE_MINUTES
-from ..dependencies import get_db, get_current_active_user
+from ..auth import ACCESS_TOKEN_EXPIRE_MINUTES, create_access_token, verify_password
+from ..dependencies import CurrentUser, DbSession
 
 router = APIRouter(prefix="/auth", tags=["🔐 Authentification"])
+LoginForm = Annotated[OAuth2PasswordRequestForm, Depends()]
 
 
-@router.post("/register", response_model=schemas.UserResponse, status_code=status.HTTP_201_CREATED)
-def register(user: schemas.UserCreate, db: Session = Depends(get_db)):
-    """
-    Crée un nouveau compte utilisateur.
-
-    - **email** : adresse email unique
-    - **username** : nom d'utilisateur unique
-    - **password** : mot de passe (stocké haché avec bcrypt)
-    """
+@router.post(
+    "/register",
+    response_model=schemas.UserPrivate,
+    status_code=status.HTTP_201_CREATED,
+)
+def register(user: schemas.UserCreate, db: DbSession):
+    """Crée un compte et ne retourne jamais le mot de passe ou son hash."""
     if crud.get_user_by_email(db, user.email):
-        raise HTTPException(status_code=400, detail="Email déjà utilisé")
+        raise HTTPException(status_code=409, detail="Email déjà utilisé")
     if crud.get_user_by_username(db, user.username):
-        raise HTTPException(status_code=400, detail="Nom d'utilisateur déjà pris")
+        raise HTTPException(status_code=409, detail="Nom d'utilisateur déjà pris")
     return crud.create_user(db, user)
 
 
 @router.post("/login", response_model=schemas.Token)
-def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
-    """
-    Connexion avec username + password.
-    Retourne un token JWT Bearer valable 30 minutes.
-    """
+def login(form_data: LoginForm, db: DbSession):
+    """Retourne un token JWT Bearer valable 30 minutes."""
     user = crud.get_user_by_username(db, form_data.username)
     if not user or not verify_password(form_data.password, user.hashed_password):
         raise HTTPException(
@@ -41,12 +40,12 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
         )
     access_token = create_access_token(
         data={"sub": user.username},
-        expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES),
     )
     return {"access_token": access_token, "token_type": "bearer"}
 
 
-@router.get("/me", response_model=schemas.UserResponse)
-def get_me(current_user=Depends(get_current_active_user)):
-    """Retourne le profil de l'utilisateur actuellement connecté."""
+@router.get("/me", response_model=schemas.UserPrivate)
+def get_me(current_user: CurrentUser):
+    """Retourne le profil privé de l'utilisateur connecté."""
     return current_user

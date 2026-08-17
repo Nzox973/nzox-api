@@ -1,46 +1,47 @@
-# Authentification JWT et hachage des mots de passe
-import os
-from datetime import datetime, timedelta
-from typing import Optional
-from jose import JWTError, jwt
-from passlib.context import CryptContext
+"""Authentification JWT et hachage Argon2 des mots de passe."""
+
+from datetime import datetime, timedelta, timezone
+
+import jwt
+from jwt.exceptions import InvalidTokenError
+from pwdlib import PasswordHash
+
+from .config import settings
 from .schemas import TokenData
 
-# En production : définir SECRET_KEY dans les variables d'environnement
-# Ne jamais utiliser le fallback "dev-only-change-me" en production
-SECRET_KEY = os.getenv("SECRET_KEY", "dev-only-change-me")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
-# Contexte bcrypt pour le hachage des mots de passe
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+password_hash = PasswordHash.recommended()
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Vérifie qu'un mot de passe correspond au hash stocké."""
-    return pwd_context.verify(plain_password, hashed_password)
+    return password_hash.verify(plain_password, hashed_password)
 
 
 def get_password_hash(password: str) -> str:
-    """Gènère le hash bcrypt d'un mot de passe en clair."""
-    return pwd_context.hash(password)
+    """Génère un hash Argon2 du mot de passe en clair."""
+    return password_hash.hash(password)
 
 
-def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
+def create_access_token(data: dict, expires_delta: timedelta | None = None) -> str:
     """Crée et signe un token JWT avec une durée de validité."""
     to_encode = data.copy()
-    expire = datetime.utcnow() + (expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
+    expire = datetime.now(timezone.utc) + (
+        expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    )
     to_encode.update({"exp": expire})
-    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return jwt.encode(to_encode, settings.secret_key, algorithm=ALGORITHM)
 
 
-def decode_token(token: str) -> Optional[TokenData]:
+def decode_token(token: str) -> TokenData | None:
     """Décode un token JWT et retourne ses données, ou None si invalide."""
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        username: str = payload.get("sub")
+        payload = jwt.decode(token, settings.secret_key, algorithms=[ALGORITHM])
+        username = payload.get("sub")
         if username is None:
             return None
         return TokenData(username=username)
-    except JWTError:
+    except InvalidTokenError:
         return None

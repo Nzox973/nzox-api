@@ -1,15 +1,20 @@
-# Configuration de la base de données SQLite avec SQLAlchemy
+"""Configuration SQLAlchemy."""
+
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, declarative_base
+from sqlalchemy.orm import declarative_base, sessionmaker
+from sqlalchemy.pool import StaticPool
 
-# Fichier SQLite local — remplacer par une URL PostgreSQL en production
-SQLALCHEMY_DATABASE_URL = "sqlite:///./nzox_api.db"
+from .config import settings
 
-# check_same_thread=False est obligatoire avec SQLite en contexte multi-thread
-engine = create_engine(
-    SQLALCHEMY_DATABASE_URL,
-    connect_args={"check_same_thread": False}
-)
+SQLALCHEMY_DATABASE_URL = settings.database_url
+
+engine_options: dict = {}
+if SQLALCHEMY_DATABASE_URL.startswith("sqlite"):
+    engine_options["connect_args"] = {"check_same_thread": False}
+if SQLALCHEMY_DATABASE_URL in {"sqlite://", "sqlite:///:memory:"}:
+    engine_options["poolclass"] = StaticPool
+
+engine = create_engine(SQLALCHEMY_DATABASE_URL, **engine_options)
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
